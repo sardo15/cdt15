@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="report_invoice_ticket" model="ir.actions.report">
+        <field name="name">Ticket</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dv_l10n_pe_account_in_invoice_ticket.cpe_ticket_print</field>
+        <field name="report_file">dv_l10n_pe_account_in_invoice_ticket.cpe_ticket_print</field>
+        <field name="print_report_name">'Ticket - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="dv_l10n_pe_account_in_invoice_ticket.paperformat_ticket"/>
+    </record>
+</odoo>

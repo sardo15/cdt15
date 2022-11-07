@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template id="cpe_ticket_body_print">
+        <t t-if="not company">
+            <!-- Multicompany -->
+            <t t-if="company_id">
+                <t t-set="company" t-value="company_id"/>
+            </t>
+            <t t-elif="o and 'company_id' in o">
+                <t t-set="company" t-value="o.company_id.sudo()"/>
+            </t>
+            <t t-else="else">
+                <t t-set="company" t-value="res_company"/>
+            </t>
+        </t>
+        <hr style="width:10%;text-align:left;margin-left:0"/>
+        <div class="article pos-sale-ticket" t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id">
+            <t t-set="o" t-value="o.with_context(lang=lang)" />
+            <t t-set="address">
+                <address t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}' />
+                <div t-if="o.partner_id.vat" class="mt16">
+                    <t t-if="o.company_id.country_id.vat_label" t-esc="o.company_id.country_id.vat_label" id="inv_tax_id_label"/>
+                    <t t-else="">Tax ID</t>:
+                    <span t-field="o.partner_id.vat"/>
+                </div>
+            </t>
+            <div style="font-size: 16px;">
+                <div class="container">
+                    <div class="row" style="font-size: 12px;">
+                        <div class="col-4">
+                            <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"  alt="Logo" style="max-height: 90px; height: 90px; max-width: 150px; display:block; margin-left: auto; margin-right: auto; top: 30%;" />
+                        </div>
+                        <div class="col-1">
+  	                </div>
+                        <div class="col-8">
+                            <div>
+                                <strong>
+                                    <t t-esc="company.name"/>
+                                </strong>
+                            </div>
+                            <div>RUC:
+                                <t t-esc="company.vat"/>
+                            </div>
+                            <div>
+                                <t t-esc="company.street"/>
+                            </div>
+                            <div>
+                                <t t-esc="company.city"/>
+                            </div>
+                            <div>
+                                <t t-esc="company.state_id.name"/>
+                            </div>
+                            <div>
+                                <t t-esc="company.country_id.name"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr width="2px" style="width:100%;text-align:left;margin-left:0"/>
+                <h5 style="text-align:center;">
+                    <t t-if="o.l10n_latam_document_type_id.code == '01'">Factura electrónica</t>
+                    <t t-elif="o.l10n_latam_document_type_id.code == '03'">Boleta electrónica</t>
+                    <t t-else="">Comprobante electrónico</t>
+                    <br/>
+                    <t t-esc="o.name" style="text-align:center;"/>
+                    <table  class="text-center" style="width: 100%; font-size: 12px;">
+                        <thead>
+                            <tr>
+                                <th>Fecha de Factura</th>
+                                <th>Fecha de Vencimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <t t-esc="o.invoice_date"/>
+                                </td>
+                                <td>
+                                    <t t-esc="o.invoice_date_due"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </h5>
+                <hr style="width:100%;text-align:left;margin-left:0"/>
+                <div style="text-align:left; font-size: 15px;">
+                    <div>
+                        <strong>Razón Social: </strong>
+                        <t t-esc="o.partner_id.name"/>
+                    </div>
+                    <div class="row" t-if="o.partner_id.vat">
+                        <div t-if="o.partner_id.l10n_latam_identification_type_id.l10n_pe_vat_code=='6'" class="col-3"> RUC </div>
+                        <div t-else="" class="col-3"> DNI </div>
+                        
+                        :
+                        <div class="col-9">
+                            <t t-esc="o.partner_id.vat"/>
+                        </div>
+                    </div>
+                    <div>
+                        <strong>RUC: </strong>
+                        <t t-esc="o.partner_id.vat"/>
+                    </div>
+                    <div>
+                        <strong>Dirección: </strong>
+                        <t t-esc="o._get_street(o.partner_id)"/>
+                    </div>
+                </div>
+            </div>
+            <hr style="width:100%;text-align:left;margin-left:0"/>
+            <table style="width: 100%; font-size: 12px;">
+                <t t-set="current_subtotal" t-value="0"/>
+                <t t-set="lines" t-value="o.invoice_line_ids.sorted(key=lambda l: (-l.sequence, l.date, l.move_name, -l.id), reverse=True)"/>
+                <thead>
+                    <tr style="height: 9px;">
+                        <th>DESCRIPCIÓN</th>
+                        <th> &amp;nbsp;&amp;nbsp; </th>
+                        <th>CANTIDAD</th>
+                        <th> &amp;nbsp;&amp;nbsp; </th>
+                        <th>PRECIO UNIT</th>
+                        <th> &amp;nbsp;&amp;nbsp; </th>
+                        <th>IMPUESTOS</th>
+                        <th> &amp;nbsp;&amp;nbsp; </th>
+                        <th>TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="lines" t-as="line">
+                        <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal" groups="account.group_show_line_subtotals_tax_excluded"/>
+                        <t t-set="current_subtotal" t-value="current_subtotal + line.price_total" groups="account.group_show_line_subtotals_tax_included"/>
+                        <t t-set="tax_amount" t-value="round(line.price_total - line.price_subtotal,2)"/>
+                        <tr>
+                            <td class="text-left">
+                                <span>
+                                    <t t-esc="line.name"/>
+                                </span>
+                            </td>
+                            <td > &amp;nbsp;&amp;nbsp; </td>
+                            <td class="text-center">
+                                <t t-esc="line.quantity"/>
+                            </td>
+                            <td > &amp;nbsp;&amp;nbsp; </td>
+                            <td class="text-center">
+                                <t t-esc="line.price_unit"/>
+                            </td>
+                            <td > &amp;nbsp;&amp;nbsp; </td>
+                            <td class="text-center">
+                                <t t-esc="tax_amount"/>
+                            </td>
+                            <td > &amp;nbsp;&amp;nbsp; </td>
+                            <td class="text-center">
+                                <t t-esc="line.price_total"/>
+                            </td>
+                        </tr>
+                        <tr t-if="current_section and (line_last or lines[line_index+1].display_type == 'line_section')" >
+                            <td>  </td>
+                            <td> </td>
+                            <td>  </td>
+                            <td> </td>
+                            <td>
+                                <strong class="mr16">Subtotal</strong>
+                                <span
+	                                    t-esc="current_subtotal"
+	                                    t-options='{"widget": "monetary", "display_currency": o.currency_id}'
+	                                />
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+            <hr style="width:10%;text-align:left;margin-left:0"/>
+            <div class="clearfix">
+                <div id="total" class="row">
+                    <div t-attf-class="#{'col-6' if report_type != 'html' else 'col-sm-7 col-md-6'} ml-auto">
+                        <table class="table table-sm" style="page-break-inside: avoid;">
+                            <!--Tax totals-->
+                            <t t-set="tax_totals" t-value="json.loads(o.tax_totals_json)"/>
+                            <t t-call="account.document_tax_totals"/>
+                            <!--Payments-->
+                            <t t-if="print_with_payments">
+                                <t t-if="o.payment_state != 'invoicing_legacy'">
+                                    <t t-set="payments_vals" t-value="o.sudo()._get_reconciled_info_JSON_values()"/>
+                                    <t t-foreach="payments_vals" t-as="payment_vals">
+                                        <tr>
+                                            <td>
+                                                <i class="oe_form_field text-right oe_payment_label">Paid on
+                                                    <t t-esc="payment_vals['date']" t-options="{&quot;widget&quot;: &quot;date&quot;}"/>
+                                                </i>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-esc="payment_vals['amount']" t-options="{&quot;widget&quot;: &quot;monetary&quot;, &quot;display_currency&quot;: o.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-if="len(payments_vals) &gt; 0">
+                                        <tr class="border-black">
+                                            <td>
+                                                <strong>TOTAL A PAGAR:</strong>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="o.amount_residual"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </t>
+                            </t>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <p class="text-left" t-if="o.invoice_payment_term_id">
+                    Término de Pago::
+                    <strong>
+                        <span t-field="o.invoice_payment_term_id" />
+                    </strong>
+                </p>
+                <div>
+                    <p class="text-left">
+                    Son:
+                        <strong>
+                            <span t-field="o.amount_in_text" />
+                        </strong>
+                        <div class="col-xs-12  text-center" style="padding: 2mm">
+                            <img t-if="o.l10n_pe_sunat_qr_code" t-att-src="'/report/barcode/QR/%s' %o.l10n_pe_sunat_qr_code" class="img-responsive center-block" style="width: 40mm;  height: 40mm;" />
+                        </div>
+                    </p>
+                </div>
+                <div class="text-center" style="border-top: 1px solid black;">
+                    <t t-if="company.website">
+                        <span t-field="company.website"></span>
+                    </t>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="cpe_ticket_print" name="cpe_ticket_print">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.invoice_user_id.sudo().lang if o.move_type in ('in_invoice', 'in_refund') else o.partner_id.lang"/>
+                <t t-call="dv_l10n_pe_account_in_invoice_ticket.cpe_ticket_body_print" t-lang="lang"/>
+    		</t>
+        </t>
+    </template>
+    <template id="report_invoice_ticket_pagos" inherit_id="dv_l10n_pe_account_in_invoice_ticket.cpe_ticket_body_print" primary="True">
+        <xpath expr="//div[@id='total']" position="after">
+            <t t-set="payments_vals" t-value="o.sudo()._get_reconciled_info_JSON_values()"/>
+            <t t-foreach="payments_vals" t-as="payment_vals">
+                <tr>
+                    <td>
+                        <i class="oe_form_field text-right oe_payment_label">Paid on
+                            <t t-esc="payment_vals['date']" t-options='{"widget": "date"}'/>
+                        </i>
+                    </td>
+                    <td class="text-right">
+                        <span t-esc="payment_vals['amount']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                    </td>
+                </tr>
+            </t>
+            <t t-if="len(payments_vals) > 0">
+                <tr class="border-black">
+                    <td>
+                        <strong>Amount Due</strong>
+                    </td>
+                    <td class="text-right">
+                        <span t-field="o.amount_residual"/>
+                    </td>
+                </tr>
+            </t>
+        </xpath>
+    </template>
+    <record id="paperformat_ticket" model="report.paperformat">
+        <field name="name">Ticket</field>
+        <field name="default" eval="True" />
+        <field name="format">custom</field>
+        <field name="page_height">231</field>
+        <field name="page_width">90</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">1</field>
+        <field name="margin_bottom">1</field>
+        <field name="margin_left">1</field>
+        <field name="margin_right">1</field>
+        <field name="header_line" eval="False" />
+        <field name="dpi">90</field>
+    </record>
+    <!--
+        <record id="report_invoice_ticket" model="ir.actions.report">
+            <field name="name">Invoice</field>
+            <field name="model">account.move</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">report_invoice_ticket</field>
+            <field name="report_file">report_invoice_ticket</field>
+            <field name="print_report_name">('Invoice - %s' % (object.name))</field>
+            <field name="binding_model_id" ref="model_account_move"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_ticket"/>
+        </record>
+        -->
+</odoo>
